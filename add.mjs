@@ -131,7 +131,7 @@ records.sort((a, b) => a.date.localeCompare(b.date));
 writeFileSync(DATA, JSON.stringify(records, null, 2) + '\n', 'utf8');
 
 console.log(`記録しました（${added.length}件）:`);
-for (const { rec, week } of added) console.log(`  ・${rec.date}（第${week + 1}週） ${MENU[rec.menu]} / ${rec.time} / ${rec.km}km / ${rec.speed}km/h`);
+for (const { rec, week } of added) console.log(`  ・${rec.date}（第${week + 1}週） ${MENU[rec.menu]} / ${rec.time} / ${rec.km}km / ${rec.speed.toFixed(1)}km/h`);
 
 if (noGit) { console.log('（--no-git のため git 操作はしていません）'); process.exit(0); }
 
