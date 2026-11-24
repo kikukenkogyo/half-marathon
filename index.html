@@ -95,6 +95,7 @@
   <div class="note hide" id="note"></div>
   <div id="items"></div>
   <button class="add" id="add">＋ ④ 軽く走る日を足す（4回目から）</button>
+  <div style="font-size:12px;color:#666;margin:-4px 2px 10px">📷 マシンの画面の写真を Claude に送ると、ここに自動で付きます</div>
 
   <div class="card total"><span>この週の合計</span><span><b id="tot">0</b> km <small id="totn"></small></span></div>
 
@@ -159,12 +160,45 @@
   function save(d) { try { localStorage.setItem(KEY, JSON.stringify(d)); return true; } catch (e) { toast('保存できませんでした'); return false; } }
   var data = load();
   function wlog(i) { var k = 'w' + (i + 1); if (!data[k]) data[k] = {}; if (!data[k].extra) data[k].extra = []; return data[k]; }
+
+  // ---- 写真から付けた記録（records.json。写真を Claude に送ると Claude が足す） ----
+  var RKEY = 'hm-remote-v1', remote = [];
+  try { remote = JSON.parse(localStorage.getItem(RKEY)) || []; } catch (e) { remote = []; }
+  if (!Array.isArray(remote)) remote = [];
+  function loadRemote() {
+    if (!window.fetch) return;
+    fetch('records.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+      .then(function (a) {
+        if (!Array.isArray(a)) return;
+        remote = a; try { localStorage.setItem(RKEY, JSON.stringify(a)); } catch (e) {}
+        render();
+      }).catch(function () {});
+  }
+  function remoteDates() { var o = {}; remote.forEach(function (r) { if (r && r.date) o[r.date] = true; }); return o; }
+  // スマホで付けた記録と、写真から付けた記録を1つにまとめる（同じ日は写真の記録を使う）
+  function mlog(i) {
+    var l = wlog(i), out = { extra: [] }, rd = remoteDates();
+    remote.filter(function (r) { return r && r.date && weekOf(parseDate(r.date)) === i; })
+      .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; })
+      .forEach(function (r) {
+        var rec = { date: r.date, min: r.min, time: r.time, km: r.km, memo: r.memo, speed: r.speed, outdoor: r.outdoor, photo: true, id: r.id, menu: MENU[r.menu] ? r.menu : 'extra' };
+        if (rec.menu !== 'extra' && PLAN.weeks[i][rec.menu] && !out[rec.menu]) out[rec.menu] = rec; else out.extra.push(rec);
+      });
+    ['long', 'pace', 'easy'].forEach(function (k) {
+      var d = l[k]; if (!d || rd[d.date]) return;
+      var rec = { date: d.date, min: d.min, km: d.km, memo: d.memo, lk: k };
+      if (!out[k]) out[k] = rec; else out.extra.push(rec);
+    });
+    l.extra.forEach(function (d, idx) { if (!rd[d.date]) out.extra.push({ date: d.date, min: d.min, km: d.km, memo: d.memo, lk: 'extra', li: idx }); });
+    return out;
+  }
   function allRecords() {
     var out = [];
     for (var i = 0; i < N; i++) {
-      var l = data['w' + (i + 1)]; if (!l) continue;
+      var l = mlog(i);
       ['long', 'pace', 'easy'].forEach(function (t) { if (l[t]) out.push({ type: t, week: i, date: l[t].date }); });
-      (l.extra || []).forEach(function (r) { out.push({ type: 'extra', week: i, date: r.date }); });
+      l.extra.forEach(function (r) { out.push({ type: r.photo ? r.menu : (r.lk || 'extra'), week: i, date: r.date }); });
     }
     return out;
   }
@@ -204,7 +238,7 @@
     if (t < START) return { ti: md(START) + '（月）の週から始まります', de: '', why: '' };
     if (t > RACE) return { ti: '本番おつかれさまでした', de: '', why: '' };
     if (fmt(t) === PLAN.race) return { ti: '今日は本番！', de: '最初の5kmは28分20秒が目安', why: '前半は抑えて、後半に力を残します。' };
-    var wi = clampWeek(weekOf(t)), w = PLAN.weeks[wi], l = wlog(wi), recs = allRecords(), td = fmt(t), yd = fmt(addDays(t, -1));
+    var wi = clampWeek(weekOf(t)), w = PLAN.weeks[wi], l = mlog(wi), recs = allRecords(), td = fmt(t), yd = fmt(addDays(t, -1));
     if (recs.some(function (r) { return r.date === td; })) return { ti: '今日はもう走りました', de: 'おつかれさまです。', why: '' };
     if (w.restDays && w.restDays.indexOf(td) >= 0) return { ti: '今日は休み', de: '本番前です。走らずに体を休めます。', why: '' };
     var hardY = recs.some(function (r) { return r.date === yd && (r.type === 'long' || r.type === 'pace'); });
@@ -226,12 +260,23 @@
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function recLine(r) {
     var s = md(parseDate(r.date)) + ' 済';
-    if (typeof r.min === 'number') s += '・' + r.min + '分';
+    if (r.time || typeof r.min === 'number') s += '・' + minText(r);
     if (typeof r.km === 'number') s += '・' + r.km + 'km';
+    if (r.photo) s += ' 📷';
     return s;
   }
+  function minText(r) {
+    var p = r.time ? String(r.time).split(':') : [];
+    if (p.length === 2) return +p[0] + '分' + (+p[1] ? p[1] + '秒' : '');
+    if (p.length === 3) return +p[0] + '時間' + p[1] + '分' + (+p[2] ? p[2] + '秒' : '');
+    return r.min + '分';
+  }
+  function speedText(r) {
+    if (r.outdoor && r.km > 0 && r.min > 0) { var sec = Math.round(r.min * 60 / r.km); return '1km ' + Math.floor(sec / 60) + '分' + pad(sec % 60) + '秒'; }
+    return typeof r.speed === 'number' ? r.speed.toFixed(1) + 'km/h' : '';
+  }
   function render() {
-    var t = today(), cur = clampWeek(weekOf(t)), w = PLAN.weeks[view], l = wlog(view), ws = weekStart(view);
+    var t = today(), cur = clampWeek(weekOf(t)), w = PLAN.weeks[view], l = mlog(view), ws = weekStart(view);
     $('h-title').textContent = PLAN.title + ' 練習メニュー';
     var left = dayDiff(RACE, t);
     $('h-goal').textContent = '目標 ' + PLAN.goal + (left > 0 ? '　本番まであと' + left + '日' : left === 0 ? '　今日が本番' : '');
@@ -252,13 +297,15 @@
       if (p && p.out) tags += '<span class="tag">外で走る</span>';
       if (p && p.rest) tags += '<span class="tag rest">休む週</span>';
       if (!p) { h += '<div class="item none"><div class="chk" style="border-style:dashed"></div><div class="bd"><div class="nm">' + MENU[k].mark + ' ' + MENU[k].name + '</div><div class="mn">なし</div></div></div>'; return; }
-      h += '<button class="item' + (d ? ' done' : '') + '" data-k="' + k + '"><div class="chk">' + (d ? '✓' : '') + '</div><div class="bd">' +
+      h += '<button class="item' + (d ? ' done' : '') + '" data-k="' + k + '"' + (d && d.photo ? ' data-r="' + esc(d.id) + '"' : '') + '><div class="chk">' + (d ? '✓' : '') + '</div><div class="bd">' +
         '<div class="nm">' + MENU[k].mark + ' ' + MENU[k].name + tags + '</div><div class="mn">' + esc(planText(w, k)) + '</div>' +
         (d ? '<div class="dn">' + esc(recLine(d)) + '</div>' : (sub ? '<div class="nm" style="font-weight:400">' + esc(sub) + '</div>' : '')) + '</div></button>';
     });
-    l.extra.forEach(function (d, i) {
-      h += '<button class="item done" data-k="extra" data-i="' + i + '"><div class="chk">✓</div><div class="bd"><div class="nm">' + MENU.extra.mark + ' ' + MENU.extra.name +
-        '</div><div class="mn">' + esc(PLAN.extra.label) + '</div><div class="dn">' + esc(recLine(d)) + '</div></div></button>';
+    l.extra.forEach(function (d) {
+      var at = d.photo ? 'data-r="' + esc(d.id) + '"' : 'data-k="' + d.lk + '"' + (d.li != null ? ' data-i="' + d.li + '"' : '');
+      var mn = d.photo && speedText(d) ? speedText(d) + ' × ' + minText(d) : PLAN.extra.label;
+      h += '<button class="item done" ' + at + '><div class="chk">✓</div><div class="bd"><div class="nm">' + MENU.extra.mark + ' ' + MENU.extra.name +
+        '</div><div class="mn">' + esc(mn) + '</div><div class="dn">' + esc(recLine(d)) + '</div></div></button>';
     });
     $('items').innerHTML = h;
 
@@ -268,7 +315,7 @@
     renderAll(cur);
   }
   function weekTotal(i) {
-    var w = PLAN.weeks[i], l = wlog(i), km = 0, est = false, count = 0;
+    var w = PLAN.weeks[i], l = mlog(i), km = 0, est = false, count = 0;
     ['long', 'pace', 'easy'].forEach(function (k) { if (l[k]) { var x = kmOf(w, k, l[k]); km += x.km; est = est || x.est; count++; } });
     l.extra.forEach(function (r) { var x = kmOf(w, 'extra', r); km += x.km; est = est || x.est; count++; });
     return { km: km, est: est, count: count };
@@ -276,7 +323,7 @@
   function renderAll(cur) {
     var h = '';
     for (var i = 0; i < N; i++) {
-      var w = PLAN.weeks[i], l = wlog(i), ws = weekStart(i), tot = weekTotal(i);
+      var w = PLAN.weeks[i], l = mlog(i), ws = weekStart(i), tot = weekTotal(i);
       var m = function (k) { return !w[k] ? '<span class="n">－</span>' : l[k] ? '<span class="y">✓</span>' : '<span class="n">・</span>'; };
       h += '<tr data-w="' + i + '"' + (i === cur ? ' class="cur"' : '') + '><td>' + (i + 1) + '</td><td class="d">' + md(ws) + '〜' + md(addDays(ws, 6)) + '</td><td>' + m('long') + '</td><td>' + m('pace') + '</td><td>' + m('easy') +
         '</td><td>' + (l.extra.length ? '<span class="y">' + l.extra.length + '</span>' : '<span class="n">・</span>') + '</td><td>' + (tot.count ? round1(tot.km).toFixed(1) : '') + '</td></tr>';
@@ -289,6 +336,7 @@
   function openSheet(k, idx) {
     var w = PLAN.weeks[view], l = wlog(view), isExtra = k === 'extra';
     var d = isExtra ? (idx != null ? l.extra[idx] : null) : l[k];
+    if (d && !isExtra && remoteDates()[d.date]) d = null;
     var ws = weekStart(view), t = today();
     var defDate = d ? d.date : (weekOf(t) === view ? fmt(t) : fmt(ws));
     var sub = isExtra ? '' : planSub(w, k);
@@ -317,6 +365,17 @@
       save(data); closeSheet(); render(); toast('消しました');
     };
   }
+  // 写真から付けた記録を見る（直すのは Claude 側）
+  function openPhoto(id) {
+    var r = null; remote.forEach(function (x) { if (x && x.id === id) r = x; }); if (!r) return;
+    var k = MENU[r.menu] ? r.menu : 'extra';
+    $('sheet').innerHTML = '<h3>' + MENU[k].mark + ' ' + MENU[k].name + '</h3><div class="plan">写真から付けた記録 📷</div>' +
+      '<table class="pace"><tr><th>走った日</th><th>時間</th><th>距離</th><th>速さ</th></tr><tr><td>' + md(parseDate(r.date)) + '</td><td>' + esc(minText(r)) + '</td><td>' + esc(r.km) + 'km</td><td>' + esc(speedText(r)) + '</td></tr></table>' +
+      (r.memo ? '<div style="margin-top:10px;font-size:14px">メモ：' + esc(r.memo) + '</div>' : '') +
+      '<div style="font-size:13px;color:#666;margin:12px 0 4px">直したい・消したいときは、Claude に「' + md(parseDate(r.date)) + 'の記録を直して」と言ってください。</div><button class="sub2" id="s-close">閉じる</button>';
+    $('sheet-bg').classList.remove('hide');
+    $('s-close').onclick = closeSheet;
+  }
   function closeSheet() { $('sheet-bg').classList.add('hide'); $('sheet').innerHTML = ''; }
   var toastTimer;
   function toast(s) { var e = $('toast'); e.textContent = s; e.classList.remove('hide'); clearTimeout(toastTimer); toastTimer = setTimeout(function () { e.classList.add('hide'); }, 2200); }
@@ -325,7 +384,7 @@
   function exportText() {
     var t = today(), cur = clampWeek(weekOf(t)), lines = ['ハーフマラソン練習の記録（' + fmt(t) + ' 時点）'];
     for (var i = 0; i < N; i++) {
-      var w = PLAN.weeks[i], l = wlog(i), tot = weekTotal(i);
+      var w = PLAN.weeks[i], l = mlog(i), tot = weekTotal(i);
       if (i > cur && !tot.count) continue;
       var ws = weekStart(i);
       lines.push('', '第' + (i + 1) + '週 ' + md(ws) + '〜' + md(addDays(ws, 6)) + '（' + w.phase + '）');
@@ -341,7 +400,7 @@
     return lines.join('\n');
   }
   function recText(d) {
-    return md(parseDate(d.date)) + (d.min != null ? ' ' + d.min + '分' : '') + (d.km != null ? ' ' + d.km + 'km' : '') + (d.memo ? ' 「' + d.memo + '」' : '');
+    return md(parseDate(d.date)) + (d.time || d.min != null ? ' ' + minText(d) : '') + (d.km != null ? ' ' + d.km + 'km' : '') + (d.photo ? '（写真）' : '') + (d.memo ? ' 「' + d.memo + '」' : '');
   }
   function copyText(s) {
     function fallback() {
@@ -376,6 +435,7 @@
   $('add').onclick = function () { openSheet('extra', null); };
   $('items').onclick = function (e) {
     var b = e.target.closest('button.item'); if (!b) return;
+    if (b.dataset.r) { openPhoto(b.dataset.r); return; }
     openSheet(b.dataset.k, b.dataset.i != null ? +b.dataset.i : null);
   };
   $('b-all').onclick = function () { var a = $('all'); a.classList.toggle('hide'); this.textContent = a.classList.contains('hide') ? '全部の週を見る' : '全部の週をしまう'; if (!a.classList.contains('hide')) a.scrollIntoView({ behavior: 'smooth' }); };
@@ -384,8 +444,9 @@
   $('b-restore').onclick = openRestore;
   $('sheet-bg').onclick = function (e) { if (e.target === this) closeSheet(); };
   $('rules').innerHTML = PLAN.rules.map(function (r) { return '<li>' + esc(r) + '</li>'; }).join('');
-  document.addEventListener('visibilitychange', function () { if (!document.hidden) render(); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) { render(); loadRemote(); } });
   render();
+  loadRemote();
 })();
 </script>
 </body>
