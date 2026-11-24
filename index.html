@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="練習メニュー">
+<meta name="theme-color" content="#d6337f">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-180.png">
+<title>ハーフマラソン練習メニュー</title>
+<style>
+  :root { --pink: #d6337f; --pink-bg: #fde9f2; --ink: #1a1a1a; --sub: #666; --line: #ddd; --bg: #f5f5f7; --card: #fff; --blue: #1f6fb5; --ok: #2e9e55; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font-family: -apple-system, "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif; background: var(--bg); color: var(--ink); font-size: 16px; line-height: 1.5; }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 12px 14px calc(28px + env(safe-area-inset-bottom)); }
+  header { background: var(--pink); color: #fff; padding: calc(10px + env(safe-area-inset-top)) 16px 12px; }
+  header .in { max-width: 560px; margin: 0 auto; }
+  header h1 { font-size: 17px; margin: 0; }
+  header .goal { font-size: 13px; opacity: .95; }
+  .weeknav { display: flex; align-items: center; gap: 8px; margin: 12px 0 8px; }
+  .weeknav button { flex: 0 0 46px; height: 46px; border: 1px solid var(--line); background: var(--card); border-radius: 12px; font-size: 20px; color: var(--ink); }
+  .weeknav button:disabled { opacity: .3; }
+  .weeknav .mid { flex: 1; text-align: center; }
+  .weeknav .wk { font-size: 20px; font-weight: 700; }
+  .weeknav .dt { font-size: 13px; color: var(--sub); }
+  .phase { display: inline-block; font-size: 12px; font-weight: 700; background: var(--pink-bg); color: var(--pink); border-radius: 999px; padding: 1px 10px; margin-left: 6px; vertical-align: 2px; }
+  .back { display: block; width: 100%; margin: 0 0 8px; padding: 8px; border: 0; background: none; color: var(--blue); font-size: 14px; text-decoration: underline; }
+  .card { background: var(--card); border-radius: 14px; padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+  .rec { border: 2px solid var(--pink); }
+  .rec .lb { font-size: 13px; font-weight: 700; color: var(--pink); }
+  .rec .ti { font-size: 19px; font-weight: 700; margin-top: 2px; }
+  .rec .de { font-size: 15px; margin-top: 2px; }
+  .rec .why { font-size: 13px; color: var(--sub); margin-top: 4px; }
+  .note { font-size: 13px; color: #8a5a00; background: #fff6dd; border-radius: 10px; padding: 8px 10px; margin-bottom: 10px; }
+  .item { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--card); border: 0; border-radius: 14px; padding: 14px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,.06); font: inherit; color: inherit; }
+  .item .chk { flex: 0 0 34px; height: 34px; border: 2.5px solid #999; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 22px; color: #fff; }
+  .item.done .chk { background: var(--ok); border-color: var(--ok); }
+  .item .bd { flex: 1; min-width: 0; }
+  .item .nm { font-size: 14px; font-weight: 700; color: var(--sub); }
+  .item .mn { font-size: 18px; font-weight: 700; }
+  .item .dn { font-size: 13px; color: var(--ok); font-weight: 700; }
+  .item.none { opacity: .55; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 4px; padding: 0 6px; margin-left: 6px; vertical-align: 2px; color: #fff; background: var(--blue); }
+  .tag.rest { background: #888; }
+  .add { display: block; width: 100%; padding: 13px; border: 2px dashed #bbb; background: none; border-radius: 14px; font: inherit; font-weight: 700; color: var(--sub); margin-bottom: 10px; }
+  .total { display: flex; justify-content: space-between; align-items: baseline; }
+  .total b { font-size: 22px; }
+  .total small { color: var(--sub); }
+  .btns { display: flex; gap: 8px; margin-bottom: 10px; }
+  .btns button { flex: 1; padding: 13px 6px; border: 1px solid var(--line); background: var(--card); border-radius: 12px; font: inherit; font-size: 14px; font-weight: 700; color: var(--ink); }
+  h2 { font-size: 15px; margin: 16px 2px 8px; }
+  table.all { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 14px; overflow: hidden; font-size: 14px; }
+  table.all th, table.all td { padding: 9px 4px; text-align: center; border-bottom: 1px solid #eee; }
+  table.all th { background: #333; color: #fff; font-size: 12px; }
+  table.all tr.cur td { background: var(--pink-bg); font-weight: 700; }
+  table.all td.d { font-size: 12px; color: var(--sub); white-space: nowrap; }
+  .y { color: var(--ok); font-weight: 700; } .n { color: #ccc; }
+  ol.rules { margin: 0; padding-left: 22px; font-size: 14px; }
+  ol.rules li { margin: 4px 0; }
+  .pace { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .pace th, .pace td { border: 1px solid #ddd; padding: 6px 2px; text-align: center; }
+  .pace th { background: #f0f0f0; font-size: 12px; }
+  .hide { display: none !important; }
+  .sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: flex-end; justify-content: center; z-index: 10; }
+  .sheet { background: #fff; width: 100%; max-width: 560px; border-radius: 18px 18px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); max-height: 92vh; overflow: auto; }
+  .sheet h3 { margin: 0; font-size: 18px; }
+  .sheet .plan { color: var(--sub); font-size: 14px; margin: 2px 0 12px; }
+  .f { margin-bottom: 10px; }
+  .f label { display: block; font-size: 13px; font-weight: 700; color: var(--sub); margin-bottom: 3px; }
+  .f input, .f textarea { width: 100%; padding: 11px; border: 1px solid #bbb; border-radius: 10px; font: inherit; font-size: 17px; background: #fff; color: var(--ink); }
+  .f textarea { height: 130px; font-size: 13px; }
+  .row { display: flex; gap: 10px; } .row .f { flex: 1; }
+  .go { display: block; width: 100%; padding: 15px; border: 0; border-radius: 12px; background: var(--pink); color: #fff; font: inherit; font-size: 18px; font-weight: 700; margin-top: 6px; }
+  .sub2 { display: block; width: 100%; padding: 12px; border: 0; background: none; color: var(--sub); font: inherit; font-size: 15px; margin-top: 4px; }
+  .del { color: #c0392b; }
+  .toast { position: fixed; left: 50%; bottom: calc(26px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: #222; color: #fff; padding: 10px 18px; border-radius: 999px; font-size: 14px; z-index: 20; white-space: nowrap; }
+</style>
+</head>
+<body>
+<header><div class="in">
+  <h1 id="h-title"></h1>
+  <div class="goal" id="h-goal"></div>
+</div></header>
+
+<div class="wrap">
+  <div class="weeknav">
+    <button id="prev" aria-label="前の週">‹</button>
+    <div class="mid"><div class="wk" id="wk"></div><div class="dt" id="dt"></div></div>
+    <button id="next" aria-label="次の週">›</button>
+  </div>
+  <button class="back hide" id="back">今週に戻る</button>
+
+  <div class="card rec" id="rec"></div>
+  <div class="note hide" id="note"></div>
+  <div id="items"></div>
+  <button class="add" id="add">＋ ④ 軽く走る日を足す（4回目から）</button>
+
+  <div class="card total"><span>この週の合計</span><span><b id="tot">0</b> km <small id="totn"></small></span></div>
+
+  <div class="btns">
+    <button id="b-all">全部の週を見る</button>
+    <button id="b-copy">記録をコピー</button>
+  </div>
+
+  <div id="all" class="hide">
+    <h2>全部の週</h2>
+    <table class="all"><thead><tr><th>週</th><th>月〜日</th><th>①</th><th>②</th><th>③</th><th>④</th><th>km</th></tr></thead><tbody id="all-b"></tbody></table>
+  </div>
+
+  <h2>守ること</h2>
+  <div class="card"><ol class="rules" id="rules"></ol></div>
+
+  <h2>外で走るときの速さ（1kmあたり）</h2>
+  <div class="card">
+    <table class="pace"><tr><th>① 長く走る日</th><th>③ つなぎの日</th><th>② 本番の速さ</th></tr><tr><td>7分04秒</td><td>6分40秒</td><td><b>5分40秒</b></td></tr></table>
+    <div style="height:10px"></div>
+    <table class="pace"><tr><th>5km</th><th>10km</th><th>15km</th><th>20km</th><th>ゴール</th></tr><tr><td>28:20</td><td>56:40</td><td>1:25:00</td><td>1:53:20</td><td><b>1:59:33</b></td></tr></table>
+    <div style="font-size:12px;color:#666;margin-top:6px">下の段は、本番で2時間を切るための通過タイム</div>
+  </div>
+
+  <button class="sub2" id="b-restore">記録を戻す（機種変更・消えたとき用）</button>
+</div>
+
+<div class="sheet-bg hide" id="sheet-bg"><div class="sheet" id="sheet"></div></div>
+<div class="toast hide" id="toast"></div>
+
+<script src="plan.js"></script>
+<script>
+(function () {
+  var PLAN = window.PLAN, KEY = 'hm-log-v1';
+  var MENU = {
+    long:  { mark: '①', name: '長く走る日' },
+    pace:  { mark: '②', name: '本番の速さの日' },
+    easy:  { mark: '③', name: 'つなぎの日' },
+    extra: { mark: '④', name: '軽く走る日' }
+  };
+  var $ = function (id) { return document.getElementById(id); };
+
+  // ---- 日付 ----
+  function parseDate(s) { var p = s.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmt(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function md(d) { return (d.getMonth() + 1) + '/' + d.getDate(); }
+  function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
+  function dayDiff(a, b) { return Math.round((a - b) / 86400000); }
+  function today() {
+    var m = /[?&]today=(\d{4}-\d{2}-\d{2})/.exec(location.search);
+    if (m) return parseDate(m[1]);
+    var n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate());
+  }
+  var START = parseDate(PLAN.firstMonday), RACE = parseDate(PLAN.race), N = PLAN.weeks.length;
+  function weekStart(i) { return addDays(START, i * 7); }
+  function weekOf(d) { return Math.floor(dayDiff(d, START) / 7); }
+  function clampWeek(i) { return Math.max(0, Math.min(N - 1, i)); }
+
+  // ---- 記録の保存（このスマホの中） ----
+  function load() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } }
+  function save(d) { try { localStorage.setItem(KEY, JSON.stringify(d)); return true; } catch (e) { toast('保存できませんでした'); return false; } }
+  var data = load();
+  function wlog(i) { var k = 'w' + (i + 1); if (!data[k]) data[k] = {}; if (!data[k].extra) data[k].extra = []; return data[k]; }
+  function allRecords() {
+    var out = [];
+    for (var i = 0; i < N; i++) {
+      var l = data['w' + (i + 1)]; if (!l) continue;
+      ['long', 'pace', 'easy'].forEach(function (t) { if (l[t]) out.push({ type: t, week: i, date: l[t].date }); });
+      (l.extra || []).forEach(function (r) { out.push({ type: 'extra', week: i, date: r.date }); });
+    }
+    return out;
+  }
+
+  // ---- メニューの言い方と距離の目安 ----
+  function planText(w, t) {
+    if (t === 'extra') return PLAN.extra.label;
+    var p = w[t]; if (!p) return 'なし';
+    if (t === 'long') return PLAN.longSpeed.toFixed(1) + 'km/h × ' + p.min + '分';
+    if (t === 'pace') return p.test ? '10kmを全力で（力だめし）' : p.speed.toFixed(1) + 'km/h × ' + p.min + '分';
+    return p.label || (PLAN.easySpeed.toFixed(1) + 'km/h × ' + p.min + '分');
+  }
+  function planSub(w, t) {
+    var p = w[t]; if (!p) return '';
+    if (t === 'long') return '約' + round1(p.min * PLAN.longSpeed / 60) + 'km';
+    if (t === 'pace') return p.test ? '54分切りが目安' : '約' + round1(p.speed * p.min / 60) + 'km';
+    if (t === 'easy') return p.fast10 ? '最後の10分だけ10.0km/h' : '';
+    return '';
+  }
+  function speedOf(w, t) {
+    if (t === 'long') return PLAN.longSpeed;
+    if (t === 'easy') return PLAN.easySpeed;
+    if (t === 'extra') return PLAN.extra.speed;
+    return (w.pace && w.pace.speed) || 10.6;
+  }
+  function planMin(w, t) { if (t === 'extra') return PLAN.extra.min; var p = w[t]; return p ? (p.min || (p.test ? 54 : 0)) : 0; }
+  function kmOf(w, t, r) {
+    if (r && typeof r.km === 'number') return { km: r.km, est: false };
+    if (t === 'pace' && w.pace && w.pace.test) return { km: 10, est: true };
+    var min = (r && typeof r.min === 'number') ? r.min : planMin(w, t);
+    return { km: min * speedOf(w, t) / 60, est: true };
+  }
+  function round1(x) { return Math.round(x * 10) / 10; }
+
+  // ---- 今日のおすすめ ----
+  function recommend(t) {
+    if (t < START) return { ti: md(START) + '（月）の週から始まります', de: '', why: '' };
+    if (t > RACE) return { ti: '本番おつかれさまでした', de: '', why: '' };
+    if (fmt(t) === PLAN.race) return { ti: '今日は本番！', de: '最初の5kmは28分20秒が目安', why: '前半は抑えて、後半に力を残します。' };
+    var wi = clampWeek(weekOf(t)), w = PLAN.weeks[wi], l = wlog(wi), recs = allRecords(), td = fmt(t), yd = fmt(addDays(t, -1));
+    if (recs.some(function (r) { return r.date === td; })) return { ti: '今日はもう走りました', de: 'おつかれさまです。', why: '' };
+    if (w.restDays && w.restDays.indexOf(td) >= 0) return { ti: '今日は休み', de: '本番前です。走らずに体を休めます。', why: '' };
+    var hardY = recs.some(function (r) { return r.date === yd && (r.type === 'long' || r.type === 'pace'); });
+    var remain = ['long', 'pace', 'easy'].filter(function (k) { return w[k] && !l[k]; });
+    var pick, why;
+    if (hardY) {
+      if (remain.indexOf('easy') >= 0) { pick = 'easy'; why = '昨日がきつい日だったので、今日はつなぎの日にします。'; }
+      else { pick = 'extra'; why = remain.length ? '昨日がきつい日でした。①②は1日あけてからにします。' : '①②③は今週ぶん終わりました。休みでも大丈夫です。'; }
+    } else if (remain.length) {
+      pick = remain[0];
+      why = pick === 'long' ? '時間のとれる日に。速度は上げません。' : pick === 'pace' ? '「あと10分走れる」で止めます。' : '';
+    } else { pick = 'extra'; why = '①②③は今週ぶん終わりました。休みでも大丈夫です。'; }
+    var sub = pick === 'extra' ? '' : planSub(w, pick);
+    return { ti: MENU[pick].mark + ' ' + MENU[pick].name, de: planText(w, pick) + (sub ? '（' + sub + '）' : ''), why: why, pick: pick, week: wi };
+  }
+
+  // ---- 画面 ----
+  var view = clampWeek(weekOf(today()));
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function recLine(r) {
+    var s = md(parseDate(r.date)) + ' 済';
+    if (typeof r.min === 'number') s += '・' + r.min + '分';
+    if (typeof r.km === 'number') s += '・' + r.km + 'km';
+    return s;
+  }
+  function render() {
+    var t = today(), cur = clampWeek(weekOf(t)), w = PLAN.weeks[view], l = wlog(view), ws = weekStart(view);
+    $('h-title').textContent = PLAN.title + ' 練習メニュー';
+    var left = dayDiff(RACE, t);
+    $('h-goal').textContent = '目標 ' + PLAN.goal + (left > 0 ? '　本番まであと' + left + '日' : left === 0 ? '　今日が本番' : '');
+    $('wk').innerHTML = '第' + (view + 1) + '週<span class="phase">' + esc(w.phase) + '</span>';
+    $('dt').textContent = md(ws) + '（月）〜' + md(addDays(ws, 6)) + '（日）';
+    $('prev').disabled = view === 0; $('next').disabled = view === N - 1;
+    $('back').classList.toggle('hide', view === cur);
+
+    var r = recommend(t);
+    $('rec').classList.toggle('hide', view !== cur);
+    $('rec').innerHTML = '<div class="lb">今日のおすすめ</div><div class="ti">' + esc(r.ti) + '</div>' +
+      (r.de ? '<div class="de">' + esc(r.de) + '</div>' : '') + (r.why ? '<div class="why">' + esc(r.why) + '</div>' : '');
+    $('note').classList.toggle('hide', !w.note); $('note').textContent = w.note || '';
+
+    var h = '';
+    ['long', 'pace', 'easy'].forEach(function (k) {
+      var p = w[k], d = l[k], sub = planSub(w, k), tags = '';
+      if (p && p.out) tags += '<span class="tag">外で走る</span>';
+      if (p && p.rest) tags += '<span class="tag rest">休む週</span>';
+      if (!p) { h += '<div class="item none"><div class="chk" style="border-style:dashed"></div><div class="bd"><div class="nm">' + MENU[k].mark + ' ' + MENU[k].name + '</div><div class="mn">なし</div></div></div>'; return; }
+      h += '<button class="item' + (d ? ' done' : '') + '" data-k="' + k + '"><div class="chk">' + (d ? '✓' : '') + '</div><div class="bd">' +
+        '<div class="nm">' + MENU[k].mark + ' ' + MENU[k].name + tags + '</div><div class="mn">' + esc(planText(w, k)) + '</div>' +
+        (d ? '<div class="dn">' + esc(recLine(d)) + '</div>' : (sub ? '<div class="nm" style="font-weight:400">' + esc(sub) + '</div>' : '')) + '</div></button>';
+    });
+    l.extra.forEach(function (d, i) {
+      h += '<button class="item done" data-k="extra" data-i="' + i + '"><div class="chk">✓</div><div class="bd"><div class="nm">' + MENU.extra.mark + ' ' + MENU.extra.name +
+        '</div><div class="mn">' + esc(PLAN.extra.label) + '</div><div class="dn">' + esc(recLine(d)) + '</div></div></button>';
+    });
+    $('items').innerHTML = h;
+
+    var tot = weekTotal(view);
+    $('tot').textContent = round1(tot.km).toFixed(1);
+    $('totn').textContent = tot.count ? '（' + tot.count + '回' + (tot.est ? '・目安ふくむ' : '') + '）' : '';
+    renderAll(cur);
+  }
+  function weekTotal(i) {
+    var w = PLAN.weeks[i], l = wlog(i), km = 0, est = false, count = 0;
+    ['long', 'pace', 'easy'].forEach(function (k) { if (l[k]) { var x = kmOf(w, k, l[k]); km += x.km; est = est || x.est; count++; } });
+    l.extra.forEach(function (r) { var x = kmOf(w, 'extra', r); km += x.km; est = est || x.est; count++; });
+    return { km: km, est: est, count: count };
+  }
+  function renderAll(cur) {
+    var h = '';
+    for (var i = 0; i < N; i++) {
+      var w = PLAN.weeks[i], l = wlog(i), ws = weekStart(i), tot = weekTotal(i);
+      var m = function (k) { return !w[k] ? '<span class="n">－</span>' : l[k] ? '<span class="y">✓</span>' : '<span class="n">・</span>'; };
+      h += '<tr data-w="' + i + '"' + (i === cur ? ' class="cur"' : '') + '><td>' + (i + 1) + '</td><td class="d">' + md(ws) + '〜' + md(addDays(ws, 6)) + '</td><td>' + m('long') + '</td><td>' + m('pace') + '</td><td>' + m('easy') +
+        '</td><td>' + (l.extra.length ? '<span class="y">' + l.extra.length + '</span>' : '<span class="n">・</span>') + '</td><td>' + (tot.count ? round1(tot.km).toFixed(1) : '') + '</td></tr>';
+    }
+    $('all-b').innerHTML = h;
+  }
+
+  // ---- 入力の画面 ----
+  function num(v) { v = String(v).replace(/[０-９．]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).trim(); if (v === '') return null; var n = parseFloat(v); return isNaN(n) ? null : n; }
+  function openSheet(k, idx) {
+    var w = PLAN.weeks[view], l = wlog(view), isExtra = k === 'extra';
+    var d = isExtra ? (idx != null ? l.extra[idx] : null) : l[k];
+    var ws = weekStart(view), t = today();
+    var defDate = d ? d.date : (weekOf(t) === view ? fmt(t) : fmt(ws));
+    var sub = isExtra ? '' : planSub(w, k);
+    $('sheet').innerHTML =
+      '<h3>' + MENU[k].mark + ' ' + MENU[k].name + '</h3><div class="plan">' + esc(planText(w, k)) + (sub ? '（' + esc(sub) + '）' : '') + '</div>' +
+      '<div class="f"><label>走った日</label><input type="date" id="f-date" value="' + defDate + '" min="' + fmt(ws) + '" max="' + fmt(addDays(ws, 6)) + '"></div>' +
+      '<div class="row"><div class="f"><label>時間（分）</label><input id="f-min" inputmode="decimal" value="' + (d && d.min != null ? d.min : '') + '" placeholder="' + planMin(w, k) + '"></div>' +
+      '<div class="f"><label>距離（km）</label><input id="f-km" inputmode="decimal" value="' + (d && d.km != null ? d.km : '') + '" placeholder="' + round1(kmOf(w, k, null).km) + '"></div></div>' +
+      '<div style="font-size:12px;color:#666;margin:-4px 0 10px">時間と距離は、入れなくても大丈夫です</div><div class="f"><label>メモ（体調・気づき）</label><input id="f-memo" value="' + esc(d && d.memo ? d.memo : '') + '"></div>' +
+      '<button class="go" id="s-ok">' + (d ? '直して保存' : 'やった') + '</button>' +
+      (d ? '<button class="sub2 del" id="s-del">この記録を消す</button>' : '') +
+      '<button class="sub2" id="s-close">閉じる</button>';
+    $('sheet-bg').classList.remove('hide');
+    $('s-close').onclick = closeSheet;
+    $('s-ok').onclick = function () {
+      var date = $('f-date').value || defDate;
+      var rec = { date: date }, mn = num($('f-min').value), km = num($('f-km').value), memo = $('f-memo').value.trim();
+      if (mn != null) rec.min = mn; if (km != null) rec.km = km; if (memo) rec.memo = memo;
+      if (isExtra) { if (idx != null) l.extra[idx] = rec; else l.extra.push(rec); } else l[k] = rec;
+      if (save(data)) toast('記録しました');
+      closeSheet(); render();
+    };
+    if (d) $('s-del').onclick = function () {
+      if (!confirm('この記録を消しますか？')) return;
+      if (isExtra) l.extra.splice(idx, 1); else delete l[k];
+      save(data); closeSheet(); render(); toast('消しました');
+    };
+  }
+  function closeSheet() { $('sheet-bg').classList.add('hide'); $('sheet').innerHTML = ''; }
+  var toastTimer;
+  function toast(s) { var e = $('toast'); e.textContent = s; e.classList.remove('hide'); clearTimeout(toastTimer); toastTimer = setTimeout(function () { e.classList.add('hide'); }, 2200); }
+
+  // ---- 記録をコピー / 戻す ----
+  function exportText() {
+    var t = today(), cur = clampWeek(weekOf(t)), lines = ['ハーフマラソン練習の記録（' + fmt(t) + ' 時点）'];
+    for (var i = 0; i < N; i++) {
+      var w = PLAN.weeks[i], l = wlog(i), tot = weekTotal(i);
+      if (i > cur && !tot.count) continue;
+      var ws = weekStart(i);
+      lines.push('', '第' + (i + 1) + '週 ' + md(ws) + '〜' + md(addDays(ws, 6)) + '（' + w.phase + '）');
+      ['long', 'pace', 'easy'].forEach(function (k) {
+        if (!w[k]) return;
+        var d = l[k];
+        lines.push(' ' + MENU[k].mark + ' 予定 ' + planText(w, k) + ' → ' + (d ? recText(d) : '未'));
+      });
+      l.extra.forEach(function (d) { lines.push(' ④ ' + recText(d)); });
+      lines.push(' 合計 ' + (tot.count ? '約' + round1(tot.km).toFixed(1) + 'km（' + tot.count + '回）' : '0回'));
+    }
+    lines.push('', '復元用データ: ' + JSON.stringify(data));
+    return lines.join('\n');
+  }
+  function recText(d) {
+    return md(parseDate(d.date)) + (d.min != null ? ' ' + d.min + '分' : '') + (d.km != null ? ' ' + d.km + 'km' : '') + (d.memo ? ' 「' + d.memo + '」' : '');
+  }
+  function copyText(s) {
+    function fallback() {
+      var ta = document.createElement('textarea'); ta.value = s; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); var ok = false; try { ok = document.execCommand('copy'); } catch (e) {} document.body.removeChild(ta);
+      toast(ok ? '記録をコピーしました' : 'コピーできませんでした');
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(s).then(function () { toast('記録をコピーしました'); }, fallback);
+    else fallback();
+  }
+  function openRestore() {
+    $('sheet').innerHTML = '<h3>記録を戻す</h3><div class="plan">前に「記録をコピー」した文字を、ここに貼り付けてください。今このスマホにある記録は、貼り付けた記録に置きかわります。</div>' +
+      '<div class="f"><textarea id="f-res"></textarea></div><button class="go" id="s-ok">戻す</button><button class="sub2" id="s-close">閉じる</button>';
+    $('sheet-bg').classList.remove('hide');
+    $('s-close').onclick = closeSheet;
+    $('s-ok').onclick = function () {
+      var txt = $('f-res').value, i = txt.indexOf('復元用データ:');
+      try {
+        if (i < 0) throw 0;
+        var obj = JSON.parse(txt.slice(i + '復元用データ:'.length).trim());
+        if (!obj || typeof obj !== 'object' || Array.isArray(obj)) throw 0;
+        if (!confirm('今の記録を、貼り付けた記録に置きかえます。よいですか？')) return;
+        data = obj; save(data); closeSheet(); render(); toast('記録を戻しました');
+      } catch (e) { alert('「復元用データ:」の行が見つからないか、途中で切れています。コピーした文字を全部貼り付けてください。'); }
+    };
+  }
+
+  // ---- ボタン ----
+  $('prev').onclick = function () { view = clampWeek(view - 1); render(); };
+  $('next').onclick = function () { view = clampWeek(view + 1); render(); };
+  $('back').onclick = function () { view = clampWeek(weekOf(today())); render(); };
+  $('add').onclick = function () { openSheet('extra', null); };
+  $('items').onclick = function (e) {
+    var b = e.target.closest('button.item'); if (!b) return;
+    openSheet(b.dataset.k, b.dataset.i != null ? +b.dataset.i : null);
+  };
+  $('b-all').onclick = function () { var a = $('all'); a.classList.toggle('hide'); this.textContent = a.classList.contains('hide') ? '全部の週を見る' : '全部の週をしまう'; if (!a.classList.contains('hide')) a.scrollIntoView({ behavior: 'smooth' }); };
+  $('all-b').onclick = function (e) { var tr = e.target.closest('tr'); if (!tr) return; view = +tr.dataset.w; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  $('b-copy').onclick = function () { copyText(exportText()); };
+  $('b-restore').onclick = openRestore;
+  $('sheet-bg').onclick = function (e) { if (e.target === this) closeSheet(); };
+  $('rules').innerHTML = PLAN.rules.map(function (r) { return '<li>' + esc(r) + '</li>'; }).join('');
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) render(); });
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+﻿.env
+tmp_*
+.DS_Store
+Thumbs.db
