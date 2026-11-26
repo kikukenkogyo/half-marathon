@@ -304,7 +304,8 @@
     l.extra.forEach(function (d) {
       var at = d.photo ? 'data-r="' + esc(d.id) + '"' : 'data-k="' + d.lk + '"' + (d.li != null ? ' data-i="' + d.li + '"' : '');
       var mn = d.photo && speedText(d) ? speedText(d) + ' × ' + minText(d) : PLAN.extra.label;
-      h += '<button class="item done" ' + at + '><div class="chk">✓</div><div class="bd"><div class="nm">' + MENU.extra.mark + ' ' + MENU.extra.name +
+      h += '<button class="item done" ' + at + '><div class="chk">✓</div><div class="bd"><div class="nm">' +
+        (d.photo && d.menu !== 'extra' ? MENU[d.menu].mark + ' ' + MENU[d.menu].name + '（この週2回目）' : MENU.extra.mark + ' ' + MENU.extra.name) +
         '</div><div class="mn">' + esc(mn) + '</div><div class="dn">' + esc(recLine(d)) + '</div></div></button>';
     });
     $('items').innerHTML = h;
